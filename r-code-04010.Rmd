@@ -1,0 +1,112 @@
+---
+title: "Tutorial 8"
+author: "Matthew Heinen"
+date: "11/07/2019"
+output: html_document
+---
+##Setup 
+Install the correct packages and load the libraries in.
+If you have not installed the `tidyverse` package, make sure you uncomment the below lines.
+
+```{r setup, message=F, warning=F}
+#install.packages("tidyverse") 
+#install.packages("lubridate")
+library(tidyverse)
+library(lubridate)
+
+#load the data
+wichita <- read_csv("https://datajournalism.tech/wp-content/uploads/2019/10/wichita.csv")
+
+population <- tibble(subject_race= c("asian/pacific islander", "black", "hispanic", "other/unknown", "white"), num_people=c(19272, 42679, 63659, 13351, 246343))
+
+center_lat <- 37.692963
+center_lng <- -97.323992
+```
+
+## Data Analysis
+Explore the dataset provided by Stanford University. See more on their website
+ <https://openpolicing.stanford.edu>.
+ 
+```{r discover-the-dataset}
+View(wichita) #to view the data table
+str(wichita)  #to see the characteristics of variables
+glimpse(wichita) #to see a short summary of values in each column
+colnames(wichita) #to view column headers
+
+```
+After viewing the dataset, you can analyze it to see the min, max, mean, median and other values for each variable. These are called descriptive statistics.
+
+```{r run-basic-descriptive-statistics}
+summary(wichita)
+```
+the `group_by` verb helps you categorize your values into fewer groups. The `summarize` verb always goes along with the `group_by` to help count the number of values for each group and compute the percentage of each group over the whole population.
+
+
+```{r}
+
+race <- group_by(wichita,subject_race) %>% summarize(value=n())
+
+```
+
+```{r}
+stop_rate <- left_join(population, race, by= "subject_race") %>% mutate(stop_rate = value/num_people)
+```
+
+
+##Data Visualization
+
+
+
+
+###Bar Chart
+```{r bar-chart}
+
+#make the plot
+
+bar <- ggplot(stop_rate,
+       aes(x=reorder(subject_race,stop_rate), y=stop_rate))+
+  geom_bar(stat="identity", 
+           position="identity", 
+           fill="red")+
+  geom_hline(yintercept = 0) +
+  labs(title="Drivers stopped by police in Wichita Kansas (2016)",
+       subtitle = "African American drivers got stopped more than white drivers")+
+  coord_flip()
+
+options(scipen=10000)
+
+bar
+```
+
+
+You can export the graphics by running the names of the objects in the Console and click the Export button under the Plots tab. Otherwise, you can use one of the following codes to export it:
+```{r export-the-plot}
+ggsave("bar.png", width=40, height=20, units= "cm")
+ggsave("bar.svg", width=40, height=20, units= "cm") 
+#ggsave only saves the last plot you created, so you may want to go up to the line chart and write ggsave("line.png")
+```
+
+
+###Interactive Map with leaflet
+```{r}
+#install.packages("httpuv")
+#install.packages("leaflet")
+library(httpuv)
+library(leaflet)
+
+```
+
+
+```{r}
+race <- colorFactor(c("white", "black", "gold", "darkorange", "gray53"), domain=c("white", "black", "asian/pacific islander", "hispanic", "other/unknown"), ordered=TRUE)
+map <- leaflet(wichita) %>%
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  setView(lng=center_lng, lat= center_lat, zoom=10) %>% 
+  addCircleMarkers(~lng, ~lat, popup=paste("This is a", wichita$subject_race, "and", wichita$subject_sex, "driver."), weight=2, radius=2, color=~race(subject_race), stroke=F, fillOpacity=1)
+
+map
+```
+
+
+
+
